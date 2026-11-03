@@ -38,7 +38,7 @@ Aplikasi catatan cepat untuk HP yang tetap bisa dipakai saat offline.
 - Punya web app manifest dengan nilai berikut:
   - `name` dan `short_name`: "Catatan"
   - `display`: `standalone`
-  - `start_url`: `/`
+  - `start_url` dan `scope` relatif ke lokasi aplikasi (`./`) agar tetap berada dalam cakupan service worker saat di-host di subpath
   - `theme_color`: `#1a73e8`, `background_color`: `#ffffff`
   - `icons`: PNG 192x192 dan 512x512, ditambah satu ikon 512x512 dengan `purpose: "maskable"`
 - Ikon boleh sederhana (placeholder), misalnya huruf "C" di atas warna solid, selama ukurannya benar.
