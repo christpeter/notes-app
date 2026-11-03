@@ -14,47 +14,58 @@ function escapeHtml(text) {
 
 // Tampilan daftar catatan
 function showList() {
-  const notes = store.list();
-
-  const items = notes
-    .map(
-      (note) => `
-      <li class="note">
-        <button type="button" class="note-open" data-id="${escapeHtml(note.id)}">
-          <span class="note-title">${escapeHtml(note.title)}</span>
-          <span class="note-preview">${escapeHtml(note.content)}</span>
-        </button>
-        <button type="button" class="note-delete" data-id="${escapeHtml(note.id)}">Hapus</button>
-      </li>`
-    )
-    .join("");
-
   app.innerHTML = `
     <main class="page">
       <h1>Catatan</h1>
       <button type="button" id="add" class="primary">Tambah catatan</button>
-      ${
-        notes.length === 0
-          ? '<p class="empty">Belum ada catatan. Tekan tombol di atas untuk membuat yang pertama.</p>'
-          : `<ul class="notes">${items}</ul>`
-      }
+      <label for="note-search">Cari</label>
+      <input id="note-search" type="search" autocomplete="off" />
+      <div id="results"></div>
     </main>
   `;
 
+  const searchInput = app.querySelector("#note-search");
+  const results = app.querySelector("#results");
+
+  function renderResults(searchText = searchInput.value) {
+    const notes = searchText ? store.search(searchText) : store.list();
+    const items = notes
+      .map(
+        (note) => `
+        <li class="note">
+          <button type="button" class="note-open" data-id="${escapeHtml(note.id)}">
+            <span class="note-title">${escapeHtml(note.title)}</span>
+            <span class="note-preview">${escapeHtml(note.content)}</span>
+          </button>
+          <button type="button" class="note-delete" data-id="${escapeHtml(note.id)}">Hapus</button>
+        </li>`
+      )
+      .join("");
+
+    results.innerHTML = notes.length
+      ? `<ul class="notes">${items}</ul>`
+      : `<p class="empty">${
+          searchText
+            ? "Tidak ada catatan yang cocok"
+            : "Belum ada catatan. Tekan tombol di atas untuk membuat yang pertama."
+        }</p>`;
+  }
+
+  renderResults("");
+  searchInput.addEventListener("input", () => renderResults());
   app.querySelector("#add").addEventListener("click", () => showEditor());
 
-  app.querySelectorAll(".note-open").forEach((button) => {
-    button.addEventListener("click", () => {
+  results.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+
+    if (button.classList.contains("note-open")) {
       const note = store.list().find((item) => item.id === button.dataset.id);
       if (note) showEditor(note);
-    });
-  });
-
-  app.querySelectorAll(".note-delete").forEach((button) => {
-    button.addEventListener("click", () => {
+    } else if (button.classList.contains("note-delete")) {
       store.remove(button.dataset.id);
-      showList();
-    });
+      renderResults();
+    }
   });
 }
 
@@ -100,3 +111,7 @@ function showEditor(note) {
 }
 
 showList();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+}

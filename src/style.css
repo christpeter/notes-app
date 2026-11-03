@@ -69,6 +69,22 @@ textarea:focus-visible {
   color: var(--muted);
 }
 
+.page > label {
+  display: block;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+.page > input {
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface);
+}
+
 .notes {
   margin: 1.25rem 0 0;
   padding: 0;
