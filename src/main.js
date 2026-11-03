@@ -1,60 +1,117 @@
-import './style.css'
-import heroImg from './assets/hero.png'
-import javascriptLogo from './assets/javascript.svg'
-import viteLogo from './assets/vite.svg'
-import { setupCounter } from './counter.js'
+import "./style.css";
+import { createStore } from "./storage.js";
 
-document.querySelector('#app').innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${javascriptLogo}" class="framework" alt="JavaScript logo"/>
-    <img src="${viteLogo}" class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.js</code> and save to test <code>HMR</code></p>
-  </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
+const store = createStore();
+const app = document.querySelector("#app");
 
-<div class="ticks"></div>
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src="${viteLogo}" alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-          <img class="button-icon" src="${javascriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
+// Tampilan daftar catatan
+function showList() {
+  app.innerHTML = `
+    <main class="page">
+      <h1>Catatan</h1>
+      <button type="button" id="add" class="primary">Tambah catatan</button>
+      <label for="note-search">Cari</label>
+      <input id="note-search" type="search" autocomplete="off" />
+      <div id="results"></div>
+    </main>
+  `;
 
-<div class="ticks"></div>
-<section id="spacer"></section>
-`
+  const searchInput = app.querySelector("#note-search");
+  const results = app.querySelector("#results");
 
-setupCounter(document.querySelector('#counter'))
+  function renderResults(searchText = searchInput.value) {
+    const notes = searchText ? store.search(searchText) : store.list();
+    const items = notes
+      .map(
+        (note) => `
+        <li class="note">
+          <button type="button" class="note-open" data-id="${escapeHtml(note.id)}">
+            <span class="note-title">${escapeHtml(note.title)}</span>
+            <span class="note-preview">${escapeHtml(note.content)}</span>
+          </button>
+          <button type="button" class="note-delete" data-id="${escapeHtml(note.id)}">Hapus</button>
+        </li>`
+      )
+      .join("");
+
+    results.innerHTML = notes.length
+      ? `<ul class="notes">${items}</ul>`
+      : `<p class="empty">${
+          searchText
+            ? "Tidak ada catatan yang cocok"
+            : "Belum ada catatan. Tekan tombol di atas untuk membuat yang pertama."
+        }</p>`;
+  }
+
+  renderResults("");
+  searchInput.addEventListener("input", () => renderResults());
+  app.querySelector("#add").addEventListener("click", () => showEditor());
+
+  results.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+
+    if (button.classList.contains("note-open")) {
+      const note = store.list().find((item) => item.id === button.dataset.id);
+      if (note) showEditor(note);
+    } else if (button.classList.contains("note-delete")) {
+      store.remove(button.dataset.id);
+      renderResults();
+    }
+  });
+}
+
+// Tampilan editor (catatan baru atau edit catatan yang sudah ada)
+function showEditor(note) {
+  app.innerHTML = `
+    <main class="page">
+      <h1>Catatan</h1>
+      <form id="editor" class="editor">
+        <label for="note-title">Judul</label>
+        <input id="note-title" type="text" required autocomplete="off" />
+
+        <label for="note-body">Isi</label>
+        <textarea id="note-body" rows="6"></textarea>
+
+        <div class="actions">
+          <button type="submit" class="primary">Simpan</button>
+          <button type="button" id="cancel">Batal</button>
+        </div>
+      </form>
+    </main>
+  `;
+
+  const titleInput = app.querySelector("#note-title");
+  const bodyInput = app.querySelector("#note-body");
+
+  // Isi lewat properti .value supaya aman dari karakter khusus
+  titleInput.value = note?.title ?? "";
+  bodyInput.value = note?.content ?? "";
+  titleInput.focus();
+
+  app.querySelector("#editor").addEventListener("submit", (event) => {
+    event.preventDefault();
+    store.save({
+      id: note?.id,
+      title: titleInput.value.trim(),
+      content: bodyInput.value,
+    });
+    showList();
+  });
+
+  app.querySelector("#cancel").addEventListener("click", showList);
+}
+
+showList();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+}
